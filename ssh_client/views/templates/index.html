@@ -1,0 +1,488 @@
+<!doctype html>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible" role="alert" align="center">
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<html>
+
+{% include "head.html" %}
+<body>
+   <div class="wrapper">
+        <!-- Sidebar  -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <h3>Web SSH Client</h3>
+            </div>
+
+            <ul class="list-unstyled components" id="sidebar-folder">
+                <p>Servers</p>
+                <template v-for="(value,key) in items">
+                <li>
+                    <a v-bind:href="'#'+key" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">{[key]}</a>
+                    <ul class="collapse list-unstyled" v-bind:id="key">
+                      <li v-for="item in value">
+                      <a href="#" @click="login(item)">{[item.remark]}</a>
+                    </li>
+                    </ul>
+                </li>
+              </template>
+                <!-- <li>
+                    <a href="#group1" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">Production</a>
+                    <ul class="collapse list-unstyled" id="group1">
+                    </ul>
+                </li>
+                <li>
+                    <a href="#group2" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">Development</a>
+                    <ul class="collapse list-unstyled" id="group2">
+                        <li v-for="item in items">
+                                <a href="#" @click="login(item)">{[item.remark]}</a>
+                        </li>
+                    </ul>
+                </li> -->
+            </ul>
+
+
+            <ul class="list-unstyled CTAs">
+                <li>
+                    <a data-toggle="modal" aria-expanded="false" class = "btn"  data-target="#folder-modal" >
+                      Add Folder
+                    </a>
+                  </li>
+                  <li>
+                      <a data-toggle="modal" aria-expanded="false" class = "btn"  data-target="#delete-folder-modal">
+                       Delete Folder
+                      </a>
+                    </li>
+                <li>
+                    <a href="#" class="addserver"  data-toggle="modal" data-target="#addserver">Add Server</a>
+                </li>
+                <li id="edit">
+                    <a href="#" class="editserver" data-toggle="modal" data-target="#edit-modal">Edit Server</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Page Content  -->
+        <div id="content" style="position:relative; width:100%; height:100vh">
+        </div>
+    </div>
+      <!-- Button trigger modal -->
+  <!-- Modal -->
+  <div class="modal fade" id="addserver" tabindex="-1" role="dialog" aria-labelledby="exampleModalLongTitle" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLongTitle">Add Server</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+            <form>
+                <div class="form-group">
+                    <label for="exampleSelect1">Folder select</label>
+                    <select class="form-control" id="folder-select" name="folder" v-model="folder">
+                      <option v-for="(value,key) in items" v-bind:value="key">{[key]}</option>
+                    </select>
+                  </div>
+                <div class="form-group">
+                        <label for="exampleInputRemark1">Remark</label>
+                        <input type="text" name="remark" class="form-control"placeholder="Remark"  v-model="remark">
+                    </div>
+                <div class="form-group">
+                    <label for="exampleInputHostname1">Hostname</label>
+                    <input type="text" name="hostname" class="form-control"placeholder="Hostname"  v-model="hostname">
+                  </div>
+                  <div class="form-group">
+                    <label for="exampleInputUsername1">Username</label>
+                    <input type="text" name="username" class="form-control" placeholder="Username" v-model="username">
+                  </div>
+                  <div class="form-group">
+                    <label for="exampleInputPassword1">Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="Password" v-model="password">
+                  </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="form-save" data-dismiss="modal" @click="add_server">Add Server</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade"  tabindex="-1" id = "edit-modal" role="dialog" aria-labelledby="exampleModalLongTitle" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLongTitle">Edit Server</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+            <form id="edit-form">
+                <div class="form-group">
+                    <label>Folder Select</label>
+                    <select class="form-control"  v-model="folder_select" @change="show_folder(folder_select)" >
+                      <option v-for="(value,key) in items" v-bind:value="key">{[key]}</option>
+                    </select>
+                  </div>
+                <div class="form-group">
+                    <label for="exampleSelect1">Server Select</label>
+                    <select class="form-control" id="server-select"  v-model="select" @change="show_info(select)" >
+                      <option v-for="item in serverlist" v-bind:value="item">{[item.remark]}</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="exampleInputHostname1">Remark</label>
+                    <input type="text" name="hostname" class="form-control" placeholder="Remark" v-model="remark">
+                  </div>
+                <div class="form-group">
+                    <label for="exampleInputHostname1">Hostname</label>
+                    <input type="text" name="hostname" class="form-control" placeholder="Hostname" v-model="hostname">
+                  </div>
+                  <div class="form-group">
+                    <label for="exampleInputUsername1">Username</label>
+                    <input type="text" name="username" class="form-control" placeholder="Username" v-model="username">
+                  </div>
+                  <div class="form-group">
+                    <label for="exampleInputPassword1">Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="Password" v-model="password">
+                  </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="server-delete" @click="delete_server" data-dismiss="modal">Delete server</button>
+          <button type="button" class="btn btn-primary" id="edit-save" @click="edit_server" data-dismiss="modal">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal fade"  tabindex="-1" id = "folder-modal" role="dialog" aria-labelledby="exampleModalLongTitle" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLongTitle">Create Folder</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+              <form id="">
+                    <div class="form-group">
+                      <label for="exampleInputHostname1">Folder name</label>
+                      <input type="text" name="folder" class="form-control" placeholder="Folder name" v-model="folder"> 
+                    </div>
+              </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" data-dismiss="modal" @click="create_folder">Create</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+  <div class="modal fade"  tabindex="-1" id = "delete-folder-modal" role="dialog" aria-labelledby="exampleModalLongTitle" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLongTitle">Delete Folder</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+              <form >
+                  <div class="form-group">
+                      <label >Folder select</label>
+                      <select class="form-control" name="folder" v-model="folder">
+                        <option v-for="(value,key) in items" v-bind:value="key">{[key]}</option>
+                      </select>
+                    </div>
+              </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" data-dismiss="modal" @click="delete_folder">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+var storage = window.localStorage;
+var curr_key = 0;
+var socket;
+var t_g;
+var connecting = false;
+function read_serverinfo(){
+    if(typeof(storage["serverinfo"]) == "undefined" || storage["serverinfo"] == ""){
+        serverinfo = {};
+        serverinfo["Development"] = []
+        storage.setItem("serverinfo",JSON.stringify(serverinfo));
+        sidebar.items = JSON.parse(storage.getItem("serverinfo"));
+        deletefolder.items = JSON.parse(storage.getItem("serverinfo"));
+        group1.items = JSON.parse(storage.getItem("serverinfo"));
+    }
+    else{
+        serverinfo = JSON.parse(storage["serverinfo"]);
+    }
+}
+
+$(document).ready(function () {
+    read_serverinfo();
+    $('#sidebarCollapse').on('click', function () {
+        $('#sidebar').toggleClass('active');
+    });
+});
+
+var folder = new Vue({
+  delimiters: ['{[', ']}'],
+  el:'#folder-modal',
+  data:{
+    folder:'',
+  },
+  methods:{
+    create_folder: function(event){
+      read_serverinfo();
+      if(typeof(serverinfo[this.folder]) == "undefined" || typeof(serverinfo[this.folder]) == "" )
+        serverinfo[this.folder] = [];
+      storage.setItem("serverinfo",JSON.stringify(serverinfo));
+      sidebar.items = JSON.parse(storage.getItem("serverinfo"));
+      deletefolder.items = JSON.parse(storage.getItem("serverinfo"));
+      group1.items = JSON.parse(storage.getItem("serverinfo"));
+    }
+  }
+})
+
+var sidebar = new Vue({
+  delimiters: ['{[', ']}'],
+  el:'#sidebar-folder',
+  data:{
+    items:JSON.parse(storage.getItem("serverinfo"))
+  },
+  methods:{
+    login: function(item) {
+      // alert(item.remark);
+      if (item.key != curr_key){
+        item['cols'] = t_g.primaryScreen_.columnCount_
+        item['rows'] = t_g.primaryScreen_.rowsArray.length
+      curr_key = item.key;
+      t_g.setCursorPosition(0,0)
+      t_g.clear()
+      t_g.clearScrollback()
+      t_g.interpret("Connecting...")
+      connecting = true
+      socket.emit("login",item);
+      }
+    }
+  },
+});
+
+var group1 = new Vue({
+  delimiters: ['{[', ']}'],
+  el: '#addserver',
+  data:{
+    items:JSON.parse(storage.getItem("serverinfo")),
+    remark:"",
+    hostname:"",
+    username:"",
+    password:"",
+    folder:""
+  },
+  methods:{
+    add_server:function(event){
+      read_serverinfo();
+      // console.log('sys');
+      console.log(this.folder);
+      if(typeof(serverinfo[this.folder]) == "undefined")
+        serverinfo[this.folder]=[];
+      var key={
+        remark:this.remark,
+        hostname:this.hostname,
+        username:this.username,
+        password:this.password,
+        folder:this.folder,
+        key:Math.floor(Math.random() * 100)
+      }
+      serverinfo[this.folder].push(key);
+      storage.setItem("serverinfo",JSON.stringify(serverinfo));
+      sidebar.items = JSON.parse(storage.getItem("serverinfo"));
+      deletefolder.items = JSON.parse(storage.getItem("serverinfo"));
+    }
+  }
+});
+
+var deletefolder = new Vue({
+  delimiters: ['{[', ']}'],
+  el: '#delete-folder-modal',
+  data:{
+    items:JSON.parse(storage.getItem("serverinfo")),
+    folder:''
+  },
+  methods:{
+    delete_folder: function(event){
+      read_serverinfo();
+      for(let key in serverinfo){
+        if(this.folder == key){
+          serverinfo[this.folder] = undefined;
+          storage.setItem("serverinfo",JSON.stringify(serverinfo));
+          sidebar.items = JSON.parse(storage.getItem("serverinfo"));
+          alert("Delete successfully");
+        }
+      }
+    }
+  }
+});
+
+var edit = new Vue({
+delimiters: ['{[', ']}'],
+  el: '#edit-modal',
+  data: {
+    items: JSON.parse(storage.getItem("serverinfo")),
+    hostname:'',
+    username:'',
+    password:'',
+    remark:'',
+    select:'',
+    folder:'',
+    folder_select:'',
+    serverlist:{},
+  },
+
+  methods: {
+    show_folder: function(key){
+      read_serverinfo();
+      this.serverlist = serverinfo[key];
+    },
+    show_info: function(key) {
+        // console.log(key);
+        this.hostname = key.hostname;
+        this.username = key.username;
+        this.password = key.password;
+        this.remark = key.remark;
+        this.folder = key.folder;
+    },
+    edit_server: function (event) {
+        read_serverinfo();
+        // console.log(this.hostname);
+        for (let i=0;i<serverinfo[this.folder].length; i++){
+            if(serverinfo[this.folder][i].hostname == this.select.hostname){
+                serverinfo[this.folder][i].remark = this.remark;
+                serverinfo[this.folder][i].hostname = this.hostname;
+                serverinfo[this.folder][i].username = this.username;
+                serverinfo[this.folder][i].password = this.password;
+                serverinfo[this.folder][i].folder = this.folder;
+                storage.setItem("serverinfo",JSON.stringify(serverinfo));
+                sidebar.items = JSON.parse(storage.getItem("serverinfo"));
+                this.items = JSON.parse(storage.getItem("serverinfo"));
+                break;
+            }
+        }
+    },
+    delete_server: function (event){
+        read_serverinfo();
+        for (let i=0;i<serverinfo[this.folder].length; i++){
+            if(serverinfo[this.folder][i].hostname == this.select.hostname){
+                serverinfo[this.folder].splice(i,1);
+                storage.setItem("serverinfo",JSON.stringify(serverinfo));
+                sidebar.items = JSON.parse(storage.getItem("serverinfo"));
+                this.items = JSON.parse(storage.getItem("serverinfo"));
+                break;
+            }
+        }
+    }
+  }
+})
+function setupHterm() {
+  const t = new hterm.Terminal("light");
+  t_g = t;
+  t.onTerminalReady = function() {
+  // Create a new terminal IO object and give it the foreground.
+  // (The default IO object just prints warning messages about unhandled
+  // things to the the JS console.)
+  const io = t.io.push();
+//   t.prefs_.set('cursor-blink', true)
+// t.prefs_.set('enable-dec12', true)
+t.prefs_.set('environment', {TERM: 'xterm'})
+t.setCursorVisible(true);
+t.prefs_.set('cursor-color', 'rgba(255, 255, 255, 1)')
+  io.onVTKeystroke = (str) => {
+    // Do something useful with str here.
+    // For example, Secure Shell forwards the string onto the NaCl plugin.
+     cols = t_g.primaryScreen_.columnCount_
+     rows = t_g.primaryScreen_.rowsArray.length
+    socket.emit('keypress', {sess_key: curr_key, key: str, rows: rows, cols: cols});
+    socket.emit('keypress', {sess_key: -1, key: str});
+  };
+
+  io.sendString = (str) => {
+    // Just like a keystroke, except str was generated by the terminal itself.
+    // For example, when the user pastes a string.
+    // Most likely you'll do the same thing as onVTKeystroke.
+  };
+
+  io.onTerminalResize = (columns, rows) => {
+    // React to size changes here.
+    // Secure Shell pokes at NaCl, which eventually results in
+    // some ioctls on the host.
+  };
+
+  // You can call io.push() to foreground a fresh io context, which can
+  // be uses to give control of the terminal to something else.  When that
+  // thing is complete, should call io.pop() to restore control to the
+  // previous io object.
+};
+t.decorate(document.querySelector('#content'));
+t.installKeyboard();
+
+socket = io.connect('http://' + document.domain + ':' + location.port);
+    socket.on('connect', function(client) {
+      console.log("connected")
+      socket.emit('keypress', {sess_key: curr_key, key: '\n'});
+    });
+
+    socket.on('response', (data) => {
+      if((data['clear'] == 1 || connecting == true) && data['error'] != 1){
+        t.setCursorPosition(0,0)
+        t.clear()
+        t.clearScrollback()
+        connecting = false
+      } else if(data['error'] == 1){
+        t.interpret(data['err_msg'])
+        connecting = false
+        return
+      }
+      try {
+        t.interpret(data['data']);
+      }
+      catch(err) {
+        console.log("Error adding text")
+      }
+    });
+setInterval(function(){ socket.emit('resize', {rows: t_g.primaryScreen_.rowsArray.length, cols: t_g.primaryScreen_.columnCount_}); }, 100);
+
+}
+
+window.onload = function() {
+  lib.init(setupHterm);
+};
+
+
+    </script>
+    </body>
+<html>
