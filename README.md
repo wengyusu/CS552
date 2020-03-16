@@ -1,5 +1,4 @@
-# CS552
-CS552 Web based SSH client
+# Web-based Secure SSH
 
 # Installation
 
